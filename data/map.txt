@@ -1,11 +1,12 @@
-h           h
-g           gh
-  h         dg
-gggg hh     ss  c
-ddddgggh
-dddddddgg  ccc g
-ssssdddddggggggd hh
-sssssssdddddddddgggg
-ssssssssssdddddddddd
-ssssssssssssssdddddd
-ssssssssssssssssssss
+      c         c   hch
+  h   b         h   ggg
+  gg            g         c
+ggddggggh    g            h
+ddbbbbbbbg     cc         g
+ssb     bd   ggggg  h
+ssbc    bd  gdddddggg
+ssbb    bs  dddddddddgg
+ssb   b bs gsssssssssssg
+ssb       hssssssssssssshh
+ssbbbbbbbbgsssssssssssssggg
+sssssssssssssssssssssssssss
