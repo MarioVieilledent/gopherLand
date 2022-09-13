@@ -4,7 +4,6 @@ import (
 	"gopherLand/game"
 	"image"
 	"log"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -52,17 +51,11 @@ func (c *Controller) Update() error {
 	// Tick management (each 12 frames = 200 ms)
 	c.manageTick()
 
-	previousIsTouchingGround := c.game.Player.TouchingGround
-	isTouchingGround := c.game.CheckIfTouchesGround()
-
-	// If player touches the ground
-	c.manageTouchingGround(previousIsTouchingGround, isTouchingGround)
-
 	// Manages jumping
-	c.manageJumpOrFall(isTouchingGround)
+	c.manageJumpOrFall()
 
 	// Manages button clicks
-	c.manageButtonClicks(isTouchingGround)
+	c.manageButtonClicks()
 
 	return nil
 }
@@ -77,49 +70,30 @@ func (c *Controller) manageTick() {
 	}
 }
 
-// Manages if the player landed
-func (c *Controller) manageTouchingGround(previousIsTouchingGround, isTouchingGround bool) {
-	if !previousIsTouchingGround && isTouchingGround {
-		c.game.Player.VerticalVelocity = 0.0 // Reset the velocity of player
-		// Avoid player to be under the ground (falling too deep with decrementations)
-		c.game.Player.Position.Y = math.Floor(c.game.Player.Position.Y) + 0.50001
-	}
-}
-
 // Manages jump and fall of player
-func (c *Controller) manageJumpOrFall(isTouchingGround bool) {
-	if !isTouchingGround {
+func (c *Controller) manageJumpOrFall() {
+	touchingGround := c.game.CheckIfTouchesGround()
+	if !touchingGround {
 		// Forces the player to stop walking while on the air
 		if c.game.Player.Walking {
 			c.game.Player.Walking = false
 		}
-		// Move verticaly the player sdepending on its vertical velocity
-		c.game.Player.Position.Y += (0.01 * c.game.Player.VerticalVelocity)
+		// Move vertically the player depending on its vertical velocity
+		c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity))
+		c.game.Player.VerticalVelocity += 1.0
 		// If player hit ceil while jumping
-		if c.game.CheckIfTouchesCeil() {
-			c.game.Player.VerticalVelocity = 0 // Reset of its velocity
-			// Forces player to not be inside block
-			c.game.Player.Position.Y = math.Floor(c.game.Player.Position.Y) + 0.49999
-		} else {
-			c.game.Player.VerticalVelocity += 1.0
-		}
 	} else if c.game.Player.VerticalVelocity != 0 {
 		c.game.Player.VerticalVelocity = 0
 	}
 }
 
 // Manages input for controlling player
-func (c *Controller) manageButtonClicks(isTouchingGround bool) {
+func (c *Controller) manageButtonClicks() {
 	var notClickedLeft, notClickedRight bool
 
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 		c.game.Player.Direction = 'l'
-		if c.game.CheckEmptyBlock("left") {
-			if !c.game.Player.Walking && isTouchingGround {
-				c.game.Player.Walking = true
-			}
-			c.game.Player.Position.X -= c.game.Player.Speed
-		}
+		c.game.Player.Walking = c.game.Move(-c.game.Player.Speed, 0)
 	} else {
 		notClickedLeft = true
 	}
@@ -127,12 +101,7 @@ func (c *Controller) manageButtonClicks(isTouchingGround bool) {
 	// Right button clicked
 	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
 		c.game.Player.Direction = 'r'
-		if c.game.CheckEmptyBlock("right") {
-			if !c.game.Player.Walking && isTouchingGround {
-				c.game.Player.Walking = true
-			}
-			c.game.Player.Position.X += c.game.Player.Speed
-		}
+		c.game.Player.Walking = c.game.Move(c.game.Player.Speed, 0)
 	} else {
 		notClickedRight = true
 	}
@@ -143,10 +112,10 @@ func (c *Controller) manageButtonClicks(isTouchingGround bool) {
 
 	// Up button clicked
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
-		if isTouchingGround {
+		if c.game.Player.TouchingGround {
 			c.game.Player.TouchingGround = false
 			c.game.Player.VerticalVelocity = -20.0
-			c.game.Player.Position.Y -= 0.01
+			c.game.Move(0.0, -0.01)
 		}
 	}
 }

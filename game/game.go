@@ -25,16 +25,6 @@ type Position struct {
 	Y float64
 }
 
-type Player struct {
-	Position         Position
-	EatBox           [4]float64 // Distance from center (position) (up, right, down, right)
-	Speed            float64
-	Direction        rune    // l or r
-	TouchingGround   bool    // True if player is walking, false if falling or jumping
-	VerticalVelocity float64 // Vertical velocity on air (gravity falling, or gravity jumping)
-	Walking          bool    // Animate player when walking
-}
-
 type Game struct {
 	Ss          int           // Size of square elements
 	width       int           // Number of blocks (width)
@@ -42,6 +32,16 @@ type Game struct {
 	AllElements map[rune]Elem // All elements
 	GameMap     [][]rune      // Game map
 	Player      Player
+}
+
+type Player struct {
+	Position         Position
+	EatBox           [4][2]float64 // 4 points in rectangle around player
+	Speed            float64
+	Direction        rune    // l or r
+	TouchingGround   bool    // True if player is walking, false if falling or jumping
+	VerticalVelocity float64 // Vertical velocity on air (gravity falling, or gravity jumping)
+	Walking          bool    // Animate player when walking
 }
 
 func InitGame() Game {
@@ -54,7 +54,12 @@ func InitGame() Game {
 		[][]rune{},
 		Player{
 			Position{1.5, 1.5},
-			[4]float64{0.45, 0.4, 0.5, 0.4},
+			[4][2]float64{
+				{-0.3, -0.4},
+				{0.3, -0.4},
+				{0.3, 0.5},
+				{-0.3, 0.5},
+			},
 			0.08,
 			'r',
 			false,
@@ -72,11 +77,16 @@ func InitGame() Game {
 ///////////////////
 
 // Checks if player is touching the ground (not falling or jumping)
-func (g *Game) CheckIfTouchesGround() bool {
-	x := int(g.Player.Position.X)
-	y := int(g.Player.Position.Y + g.Player.EatBox[2])
-	if y < g.height-1 {
-		if g.AllElements[g.GameMap[x][y]].Solid {
+func (g Game) CheckIfTouchesGround() bool {
+	xDownRight := int(g.Player.Position.X + g.Player.EatBox[2][0])
+	yDownRight := int(g.Player.Position.Y + g.Player.EatBox[2][1])
+
+	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0])
+	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1])
+
+	if yDownLeft < g.height-1 && yDownRight < g.height-1 {
+		if g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid ||
+			g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid {
 			g.Player.TouchingGround = true
 			return true
 		} else {
@@ -84,16 +94,6 @@ func (g *Game) CheckIfTouchesGround() bool {
 		}
 	}
 	return false
-}
-
-// Check if player touches a block while jumping
-func (g *Game) CheckIfTouchesCeil() bool {
-	x := int(g.Player.Position.X)
-	y := int(g.Player.Position.Y - g.Player.EatBox[0])
-	if y < 0 {
-		return true
-	}
-	return g.AllElements[g.GameMap[x][y]].Solid
 }
 
 func (game *Game) createMap() {
@@ -128,33 +128,87 @@ func (game *Game) createMap() {
 	}
 }
 
-// While moving toward left or right, checks for obstacle on the way
-func (g Game) CheckEmptyBlock(direction string) bool {
-	upMostPoint := int(g.Player.Position.Y - g.Player.EatBox[0])
-	rightMostPoint := int(g.Player.Position.X + g.Player.EatBox[1])
-	downMostPoint := int(g.Player.Position.Y + g.Player.EatBox[2])
-	leftMostPoint := int(g.Player.Position.X - g.Player.EatBox[3])
-	x := int(g.Player.Position.X)
-	y := int(g.Player.Position.Y)
-	switch direction {
-	case "up":
-		if upMostPoint >= 0 {
-			return !g.AllElements[g.GameMap[x][upMostPoint]].Solid
+// Returns coordinates of each 4 points of player's eatbox
+func (g Game) GetEatBoxPoints() (xUpLeft, yUpLeft, xUpRight, yUpRight,
+	xDownRight, yDownRight, xDownLeft, yDownLeft int) {
+	xUpLeft = int(g.Player.Position.X + g.Player.EatBox[0][0])
+	yUpLeft = int(g.Player.Position.Y + g.Player.EatBox[0][1])
+
+	xUpRight = int(g.Player.Position.X + g.Player.EatBox[1][0])
+	yUpRight = int(g.Player.Position.Y + g.Player.EatBox[1][1])
+
+	xDownRight = int(g.Player.Position.X + g.Player.EatBox[2][0])
+	yDownRight = int(g.Player.Position.Y + g.Player.EatBox[2][1])
+
+	xDownLeft = int(g.Player.Position.X + g.Player.EatBox[3][0])
+	yDownLeft = int(g.Player.Position.Y + g.Player.EatBox[3][1])
+
+	return
+}
+
+// Moves the player (checking if space is available)
+func (g *Game) Move(x, y float64) (moving bool) {
+
+	xUpLeft := int(g.Player.Position.X + g.Player.EatBox[0][0] + x)
+	yUpLeft := int(g.Player.Position.Y + g.Player.EatBox[0][1] + y)
+
+	xUpRight := int(g.Player.Position.X + g.Player.EatBox[1][0] + x)
+	yUpRight := int(g.Player.Position.Y + g.Player.EatBox[1][1] + y)
+
+	xDownRight := int(g.Player.Position.X + g.Player.EatBox[2][0] + x)
+	yDownRight := int(g.Player.Position.Y + g.Player.EatBox[2][1] + y)
+
+	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0] + x)
+	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1] + y)
+
+	if x > 0 {
+		if xUpLeft < g.width-1 && xDownLeft < g.width-1 {
+			if !g.AllElements[g.GameMap[xUpRight][yUpRight]].Solid &&
+				!g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid {
+				g.Player.Position.X += x
+				if g.Player.TouchingGround {
+					moving = true
+				}
+			}
 		}
-	case "right":
-		if rightMostPoint < g.width-1 {
-			return !g.AllElements[g.GameMap[rightMostPoint][y]].Solid
-		}
-	case "down":
-		if downMostPoint < g.height-1 {
-			return !g.AllElements[g.GameMap[x][downMostPoint]].Solid
-		}
-	case "left":
-		if leftMostPoint >= 0 {
-			return !g.AllElements[g.GameMap[leftMostPoint][y]].Solid
+	} else if x < 0 {
+		if xUpRight > 0 && xDownRight > 0 {
+			if !g.AllElements[g.GameMap[xUpLeft][yUpLeft]].Solid &&
+				!g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid {
+				g.Player.Position.X += x
+				if g.Player.TouchingGround {
+					moving = true
+				}
+			}
 		}
 	}
-	return false
+
+	if y > 0 {
+		if yUpLeft < g.height-1 && yUpRight < g.height-1 {
+			if !g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid &&
+				!g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid {
+				g.Player.Position.Y += y
+				moving = true
+			} else {
+				// If player hits the ground
+				g.Player.TouchingGround = true
+				g.Player.VerticalVelocity = 0.0 // Reset the velocity of player
+			}
+		}
+	} else if y < 0 {
+		if yDownRight > 0 && yDownLeft > 0 {
+			if !g.AllElements[g.GameMap[xUpLeft][yUpLeft]].Solid &&
+				!g.AllElements[g.GameMap[xUpRight][yUpRight]].Solid {
+				g.Player.Position.Y += y
+				moving = true
+			} else {
+				// If player hit a ceil
+				g.Player.VerticalVelocity = 0 // Reset of its velocity
+			}
+		}
+	}
+
+	return
 }
 
 // Loads all resources as element
