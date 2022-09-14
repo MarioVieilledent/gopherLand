@@ -6,13 +6,7 @@ import (
 	"strings"
 )
 
-type Elem struct {
-	Name   string          // Name of element
-	Short  rune            // Short identifier for elems (to build maps)
-	Solid  bool            // Solid can be walked over
-	Images []ImagePosition // List of images for displaying
-}
-
+// Describe the image of an block, an entity, an object
 type ImagePosition struct {
 	X1 int
 	X2 int
@@ -26,46 +20,24 @@ type Position struct {
 }
 
 type Game struct {
-	Ss          int           // Size of square elements
-	width       int           // Number of blocks (width)
-	height      int           // Number of blocks (height)
-	AllElements map[rune]Elem // All elements
-	GameMap     [][]rune      // Game map
-	Player      Player
+	Ss        int            // Square size of blocks
+	width     int            // Number of blocks (width)
+	height    int            // Number of blocks (height)
+	AllBlocks map[rune]Block // All blocks
+	GameMap   [][]rune       // Game map
+	Player    Player
 }
 
-type Player struct {
-	Position         Position
-	EatBox           [4][2]float64 // 4 points in rectangle around player
-	Speed            float64
-	Direction        rune    // l or r
-	TouchingGround   bool    // True if player is walking, false if falling or jumping
-	VerticalVelocity float64 // Vertical velocity on air (gravity falling, or gravity jumping)
-	Walking          bool    // Animate player when walking
-}
-
-func InitGame() Game {
+// Create all the structs and arrays to initialize the game
+func InitGame(xPlayerFixed int) Game {
 	// Init game structure
 	game := Game{
 		64,
 		0,
 		0,
-		map[rune]Elem{},
+		map[rune]Block{},
 		[][]rune{},
-		Player{
-			Position{1.5, 1.5},
-			[4][2]float64{
-				{-0.3, -0.4},
-				{0.3, -0.4},
-				{0.3, 0.5},
-				{-0.3, 0.5},
-			},
-			0.08,
-			'r',
-			false,
-			0.0,
-			false,
-		},
+		initPlayer(xPlayerFixed),
 	}
 	game.loadResources()
 	game.createMap()
@@ -85,8 +57,8 @@ func (g Game) CheckIfTouchesGround() bool {
 	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1])
 
 	if yDownLeft < g.height-1 && yDownRight < g.height-1 {
-		if g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid ||
-			g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid {
+		if g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]].Solid ||
+			g.AllBlocks[g.GameMap[xDownRight][yDownRight]].Solid {
 			g.Player.TouchingGround = true
 			return true
 		} else {
@@ -128,7 +100,7 @@ func (game *Game) createMap() {
 	}
 }
 
-// Returns coordinates of each 4 points of player's eatbox
+// Returns coordinates of each 4 points of player's eat-box
 func (g Game) GetEatBoxPoints() (xUpLeft, yUpLeft, xUpRight, yUpRight,
 	xDownRight, yDownRight, xDownLeft, yDownLeft int) {
 	xUpLeft = int(g.Player.Position.X + g.Player.EatBox[0][0])
@@ -151,21 +123,27 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	xUpLeft := int(g.Player.Position.X + g.Player.EatBox[0][0] + x)
 	yUpLeft := int(g.Player.Position.Y + g.Player.EatBox[0][1] + y)
+	bUpLeft := g.AllBlocks[g.GameMap[xUpLeft][yUpLeft]]
 
 	xUpRight := int(g.Player.Position.X + g.Player.EatBox[1][0] + x)
 	yUpRight := int(g.Player.Position.Y + g.Player.EatBox[1][1] + y)
+	bUpRight := g.AllBlocks[g.GameMap[xUpRight][yUpRight]]
 
 	xDownRight := int(g.Player.Position.X + g.Player.EatBox[2][0] + x)
 	yDownRight := int(g.Player.Position.Y + g.Player.EatBox[2][1] + y)
+	bDownRight := g.AllBlocks[g.GameMap[xDownRight][yDownRight]]
 
 	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0] + x)
 	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1] + y)
+	bDownLeft := g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
+
+	g.Collect()
 
 	if x > 0 {
 		if xUpLeft < g.width-1 && xDownLeft < g.width-1 {
-			if !g.AllElements[g.GameMap[xUpRight][yUpRight]].Solid &&
-				!g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid {
-				g.Player.Position.X += x
+			if !bUpRight.Solid &&
+				!bDownRight.Solid {
+				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
 				}
@@ -173,9 +151,9 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if x < 0 {
 		if xUpRight > 0 && xDownRight > 0 {
-			if !g.AllElements[g.GameMap[xUpLeft][yUpLeft]].Solid &&
-				!g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid {
-				g.Player.Position.X += x
+			if !bUpLeft.Solid &&
+				!bDownLeft.Solid {
+				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
 				}
@@ -185,9 +163,9 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	if y > 0 {
 		if yUpLeft < g.height-1 && yUpRight < g.height-1 {
-			if !g.AllElements[g.GameMap[xDownRight][yDownRight]].Solid &&
-				!g.AllElements[g.GameMap[xDownLeft][yDownLeft]].Solid {
-				g.Player.Position.Y += y
+			if !bDownRight.Solid &&
+				!bDownLeft.Solid {
+				g.Player.Move(0.0, y)
 				moving = true
 			} else {
 				// If player hits the ground
@@ -197,9 +175,9 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if y < 0 {
 		if yDownRight > 0 && yDownLeft > 0 {
-			if !g.AllElements[g.GameMap[xUpLeft][yUpLeft]].Solid &&
-				!g.AllElements[g.GameMap[xUpRight][yUpRight]].Solid {
-				g.Player.Position.Y += y
+			if !bUpLeft.Solid &&
+				!bUpRight.Solid {
+				g.Player.Move(0.0, y)
 				moving = true
 			} else {
 				// If player hit a ceil
@@ -211,38 +189,16 @@ func (g *Game) Move(x, y float64) (moving bool) {
 	return
 }
 
-// Loads all resources as element
-func (game *Game) loadResources() {
-	game.loadRessource("stone", 's', true, []ImagePosition{{0, 1, 0, 1}})
-	game.loadRessource("dirt", 'd', true, []ImagePosition{{1, 2, 0, 1}})
-	game.loadRessource("grass", 'g', true, []ImagePosition{{2, 3, 0, 1}})
-	game.loadRessource("brick", 'b', true, []ImagePosition{{3, 4, 0, 1}})
-	game.loadRessource("herb_1", 'h', false, []ImagePosition{{0, 1, 1, 2}, {1, 2, 1, 2},
-		{2, 3, 1, 2}, {3, 4, 1, 2}})
-	game.loadRessource("coin_1", 'c', false, []ImagePosition{{0, 1, 2, 3}, {1, 2, 2, 3},
-		{2, 3, 2, 3}, {3, 4, 2, 3}, {4, 5, 2, 3}, {5, 6, 2, 3}})
-	game.loadRessource("player", 'p', false, []ImagePosition{{0, 1, 3, 4}, {1, 2, 3, 4},
-		{2, 3, 3, 4}, {3, 4, 3, 4}, {4, 5, 3, 4}, {5, 6, 3, 4}, {6, 7, 3, 4}, {7, 8, 3, 4}})
-}
-
-// Loads a single element
-func (game *Game) loadRessource(name string, short rune, solid bool, images []ImagePosition) {
-	ip := []ImagePosition{}
-
-	for _, v := range images {
-		ip = append(ip, ImagePosition{
-			game.Ss * v.X1,
-			game.Ss * v.X2,
-			game.Ss * v.Y1,
-			game.Ss * v.Y2,
-		})
-	}
-
-	game.AllElements[short] = Elem{
-		name,
-		short,
-		solid,
-		ip,
+// Checks if player is over a collectable item, if yes, collects it
+func (g *Game) Collect() {
+	x := int(g.Player.Position.X)
+	y := int(g.Player.Position.Y)
+	b := g.AllBlocks[g.GameMap[x][y]]
+	if b.Collectable {
+		g.GameMap[x][y] = ' '
+		if b.Short == 'c' {
+			g.Player.CollectGold(1)
+		}
 	}
 }
 

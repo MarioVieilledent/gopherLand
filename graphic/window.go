@@ -3,20 +3,30 @@ package graphic
 import (
 	"gopherLand/game"
 	"image"
+	"image/color"
 	"log"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/tinne26/etxt"
 )
 
+const xPlayerFixed int = 10
+
 type Controller struct {
-	game      *game.Game
-	tick      uint64 // Ticks of the game
-	tickFrame uint8  // Increments each frame, go back to 0 each tick
+	game        *game.Game
+	tick        uint64         // Ticks of the game
+	tickFrame   uint8          // Increments each frame, go back to 0 each tick
+	txtRenderer *etxt.Renderer // Used to render text on screen
 }
 
 var backgroundImage *ebiten.Image
+var background1Image *ebiten.Image
+var background2Image *ebiten.Image
+var background3Image *ebiten.Image
 var resourcesImage *ebiten.Image
+var iconImage *ebiten.Image
 
 var playerShift float64 // Shift for displaying player
 
@@ -25,18 +35,34 @@ var playerShift float64 // Shift for displaying player
 //////////////////////////////
 
 func initController() Controller {
-	g := game.InitGame()
+	g := game.InitGame(xPlayerFixed)
 	playerShift = 0.5 * float64(g.Ss)
-	return Controller{&g, 0, 0}
+	return Controller{&g, 0, 0, getTxtRenderer()}
 }
 
 func init() {
 	var err error
-	resourcesImage, _, err = ebitenutil.NewImageFromFile("data/ressources.png")
+	resourcesImage, _, err = ebitenutil.NewImageFromFile("data/resources.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 	backgroundImage, _, err = ebitenutil.NewImageFromFile("data/background.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	background1Image, _, err = ebitenutil.NewImageFromFile("data/background1.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	background2Image, _, err = ebitenutil.NewImageFromFile("data/background2.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	background3Image, _, err = ebitenutil.NewImageFromFile("data/background3.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	iconImage, _, err = ebitenutil.NewImageFromFile("data/icon.png")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,7 +86,7 @@ func (c *Controller) Update() error {
 	return nil
 }
 
-// Manages tick for modulo for animate elements
+// Manages tick for modulo for animate blocks
 func (c *Controller) manageTick() {
 	if c.tickFrame == 6 {
 		c.tickFrame = 0
@@ -125,9 +151,20 @@ func (c *Controller) manageButtonClicks() {
 ///////////////////////
 
 func (c *Controller) Draw(screen *ebiten.Image) {
-	screen.DrawImage(backgroundImage, nil)
+	c.displayBackgrounds(screen)
 	c.displayBlocks(screen)
 	c.displayPlayer(screen)
+}
+
+// Draw backgrounds
+func (c *Controller) displayBackgrounds(screen *ebiten.Image) {
+	// Fixed background image
+	screen.DrawImage(backgroundImage, nil)
+
+	// Moving background image
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(-c.game.Player.Position.X*0.6*float64(c.game.Ss), 0)
+	screen.DrawImage(background3Image, op)
 }
 
 // Draw all blocks of the map
@@ -135,16 +172,19 @@ func (c *Controller) displayBlocks(screen *ebiten.Image) {
 	for x := 0; x < len(c.game.GameMap); x++ {
 		for y := 0; y < len(c.game.GameMap[x]); y++ {
 
-			elem := c.game.AllElements[c.game.GameMap[x][y]]
+			block := c.game.AllBlocks[c.game.GameMap[x][y]]
 
-			modulo := c.getModulo(elem)
+			modulo := c.getModulo(block)
 
-			if len(elem.Images) > 0 {
+			if len(block.Images) > 0 {
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(c.game.Ss*x), float64(c.game.Ss*y))
+				op.GeoM.Translate(float64(c.game.Ss*x)-
+					c.game.Player.Position.X*float64(c.game.Ss)+
+					float64(xPlayerFixed*c.game.Ss),
+					float64(c.game.Ss*y))
 				screen.DrawImage(resourcesImage.SubImage(
-					image.Rect(elem.Images[modulo].X1, elem.Images[modulo].Y1,
-						elem.Images[modulo].X2, elem.Images[modulo].Y2)).(*ebiten.Image), op)
+					image.Rect(block.Images[modulo].X1, block.Images[modulo].Y1,
+						block.Images[modulo].X2, block.Images[modulo].Y2)).(*ebiten.Image), op)
 			}
 		}
 	}
@@ -152,7 +192,7 @@ func (c *Controller) displayBlocks(screen *ebiten.Image) {
 
 // Draw the player
 func (c *Controller) displayPlayer(screen *ebiten.Image) {
-	modulo := c.getModulo(c.game.AllElements['p'])
+	modulo := c.getModulo(c.game.AllBlocks['p'])
 
 	op := &ebiten.DrawImageOptions{}
 	if c.game.Player.Direction == 'l' {
@@ -162,30 +202,35 @@ func (c *Controller) displayPlayer(screen *ebiten.Image) {
 	} else {
 		op.GeoM.Translate(-playerShift, -playerShift)
 	}
-	op.GeoM.Translate(c.game.Player.Position.X*float64(c.game.Ss),
+	op.GeoM.Translate(float64(xPlayerFixed*c.game.Ss),
 		c.game.Player.Position.Y*float64(c.game.Ss))
 	if c.game.Player.Walking {
 		screen.DrawImage(resourcesImage.SubImage(
-			image.Rect(c.game.AllElements['p'].Images[modulo].X1,
-				c.game.AllElements['p'].Images[modulo].Y1,
-				c.game.AllElements['p'].Images[modulo].X2,
-				c.game.AllElements['p'].Images[modulo].Y2)).(*ebiten.Image), op)
+			image.Rect(c.game.AllBlocks['p'].Images[modulo].X1,
+				c.game.AllBlocks['p'].Images[modulo].Y1,
+				c.game.AllBlocks['p'].Images[modulo].X2,
+				c.game.AllBlocks['p'].Images[modulo].Y2)).(*ebiten.Image), op)
 	} else {
 		screen.DrawImage(resourcesImage.SubImage(
-			image.Rect(c.game.AllElements['p'].Images[1].X1,
-				c.game.AllElements['p'].Images[1].Y1,
-				c.game.AllElements['p'].Images[1].X2,
-				c.game.AllElements['p'].Images[1].Y2)).(*ebiten.Image), op)
+			image.Rect(c.game.AllBlocks['p'].Images[1].X1,
+				c.game.AllBlocks['p'].Images[1].Y1,
+				c.game.AllBlocks['p'].Images[1].X2,
+				c.game.AllBlocks['p'].Images[1].Y2)).(*ebiten.Image), op)
 	}
+
+	// Display number of golds
+	c.txtRenderer.SetTarget(screen)
+	c.txtRenderer.SetColor(color.RGBA{200, 150, 10, 255})
+	c.txtRenderer.Draw(strconv.Itoa(c.game.Player.Gold), 10, 0)
 }
 
 /////////////////////
 // OTHER FUNCTIONS //
 /////////////////////
 
-// Used to make animation of elements
-func (c Controller) getModulo(elem game.Elem) int {
-	max := len(elem.Images)
+// Used to make animation of blocks
+func (c Controller) getModulo(block game.Block) int {
+	max := len(block.Images)
 	modulo := 0
 	if max > 1 {
 		modulo = int(c.tick) % max
@@ -199,6 +244,8 @@ func (c *Controller) Layout(outsideWidth, outsideHeight int) (screenWidth, scree
 
 func OpenWindow() {
 	ebiten.SetWindowSize(1280, 720)
+	ebiten.SetWindowTitle("GopherLand")
+	ebiten.SetWindowIcon([]image.Image{iconImage})
 
 	controler := initController()
 

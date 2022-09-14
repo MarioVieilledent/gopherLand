@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/hajimehoshi/ebiten v1.12.12
 	github.com/hajimehoshi/ebiten/v2 v2.4.2
+	github.com/tinne26/etxt v0.0.6
 )
 
 require (
@@ -16,4 +17,5 @@ require (
 	golang.org/x/image v0.0.0-20220722155232-062f8c9fd539 // indirect
 	golang.org/x/mobile v0.0.0-20220722155234-aaac322e2105 // indirect
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 )
