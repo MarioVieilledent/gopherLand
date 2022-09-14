@@ -223,8 +223,11 @@ func (g *Game) Collect() {
 		b := g.AllBlocks[g.GameMap[x][y]]
 		if b.Collectable {
 			g.GameMap[x][y] = ' '
-			if b.Short == 'c' {
+			switch b.Short {
+			case 'c':
 				g.Player.CollectGold(1)
+			case 'k':
+				g.Player.AddInventory('k')
 			}
 		}
 	}

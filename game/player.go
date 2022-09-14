@@ -17,7 +17,7 @@ type Player struct {
 // Initialize a new player with default settings
 func initPlayer(xPlayerFixed int) Player {
 	return Player{
-		Position{float64(xPlayerFixed) + 230, 1.5},
+		Position{float64(xPlayerFixed) + 0.0, 1.5},
 		[4][2]float64{
 			{-0.3, -0.4},
 			{0.3, -0.4},
@@ -54,4 +54,11 @@ func (p *Player) Buy(cost int) (canBuy bool) {
 		canBuy = true
 	}
 	return
+}
+
+func (p *Player) AddInventory(short rune) {
+	switch short {
+	case 'k':
+		p.Inventory = append(p.Inventory, Object{"Key", "Into the unknown."})
+	}
 }

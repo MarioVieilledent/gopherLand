@@ -10,20 +10,28 @@ type Block struct {
 
 // Loads all blocks
 func (game *Game) loadResources() {
+	// Solid blocks
 	game.loadRessource("stone", 's', true, false, []ImagePosition{{0, 1, 0, 1}})
 	game.loadRessource("dirt", 'd', true, false, []ImagePosition{{1, 2, 0, 1}})
 	game.loadRessource("grass", 'g', true, false, []ImagePosition{{2, 3, 0, 1}})
 	game.loadRessource("brick", 'b', true, false, []ImagePosition{{3, 4, 0, 1}})
 
+	// Non solid blocks
 	game.loadRessource("pillar_up_down", '0', false, false, []ImagePosition{{0, 1, 4, 5}})
 	game.loadRessource("pillar_down", '1', false, false, []ImagePosition{{1, 2, 4, 5}})
 	game.loadRessource("pillar_up", '2', false, false, []ImagePosition{{2, 3, 4, 5}})
 	game.loadRessource("pillar_central", '3', false, false, []ImagePosition{{3, 4, 4, 5}})
-
+	game.loadRessource("tree", 't', false, false, []ImagePosition{{4, 5, 1, 2}, {5, 6, 1, 2},
+		{6, 7, 1, 2}, {7, 8, 1, 2}})
 	game.loadRessource("herb", 'h', false, false, []ImagePosition{{0, 1, 1, 2}, {1, 2, 1, 2},
 		{2, 3, 1, 2}, {3, 4, 1, 2}})
+
+	// Collectable items
 	game.loadRessource("coin", 'c', false, true, []ImagePosition{{0, 1, 2, 3}, {1, 2, 2, 3},
 		{2, 3, 2, 3}, {3, 4, 2, 3}, {4, 5, 2, 3}, {5, 6, 2, 3}})
+	game.loadRessource("key", 'k', false, true, []ImagePosition{{6, 7, 2, 3}, {7, 8, 2, 3}})
+
+	// Player
 	game.loadRessource("player", 'p', false, false, []ImagePosition{{0, 1, 3, 4}, {1, 2, 3, 4},
 		{2, 3, 3, 4}, {3, 4, 3, 4}, {4, 5, 3, 4}, {5, 6, 3, 4}, {6, 7, 3, 4}, {7, 8, 3, 4}})
 }
