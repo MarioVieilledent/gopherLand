@@ -15,9 +15,14 @@ func (game *Game) loadResources() {
 	game.loadRessource("grass", 'g', true, false, []ImagePosition{{2, 3, 0, 1}})
 	game.loadRessource("brick", 'b', true, false, []ImagePosition{{3, 4, 0, 1}})
 
-	game.loadRessource("herb_1", 'h', false, false, []ImagePosition{{0, 1, 1, 2}, {1, 2, 1, 2},
+	game.loadRessource("pillar_up_down", '0', false, false, []ImagePosition{{0, 1, 4, 5}})
+	game.loadRessource("pillar_down", '1', false, false, []ImagePosition{{1, 2, 4, 5}})
+	game.loadRessource("pillar_up", '2', false, false, []ImagePosition{{2, 3, 4, 5}})
+	game.loadRessource("pillar_central", '3', false, false, []ImagePosition{{3, 4, 4, 5}})
+
+	game.loadRessource("herb", 'h', false, false, []ImagePosition{{0, 1, 1, 2}, {1, 2, 1, 2},
 		{2, 3, 1, 2}, {3, 4, 1, 2}})
-	game.loadRessource("coin_1", 'c', false, true, []ImagePosition{{0, 1, 2, 3}, {1, 2, 2, 3},
+	game.loadRessource("coin", 'c', false, true, []ImagePosition{{0, 1, 2, 3}, {1, 2, 2, 3},
 		{2, 3, 2, 3}, {3, 4, 2, 3}, {4, 5, 2, 3}, {5, 6, 2, 3}})
 	game.loadRessource("player", 'p', false, false, []ImagePosition{{0, 1, 3, 4}, {1, 2, 3, 4},
 		{2, 3, 3, 4}, {3, 4, 3, 4}, {4, 5, 3, 4}, {5, 6, 3, 4}, {6, 7, 3, 4}, {7, 8, 3, 4}})

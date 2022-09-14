@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const mapPath string = "data/maps/map.txt"
+
 // Describe the image of an block, an entity, an object
 type ImagePosition struct {
 	X1 int
@@ -56,6 +58,10 @@ func (g Game) CheckIfTouchesGround() bool {
 	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0])
 	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1])
 
+	if g.outOfMap([]int{xDownLeft, xDownRight}, []int{yDownLeft, yDownRight}) {
+		return false
+	}
+
 	if yDownLeft < g.height-1 && yDownRight < g.height-1 {
 		if g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]].Solid ||
 			g.AllBlocks[g.GameMap[xDownRight][yDownRight]].Solid {
@@ -70,7 +76,7 @@ func (g Game) CheckIfTouchesGround() bool {
 
 func (game *Game) createMap() {
 	// Reads the resources file
-	file, err := ioutil.ReadFile("data/map.txt")
+	file, err := ioutil.ReadFile(mapPath)
 	if err != nil {
 		log.Fatal(err) // /!\ Need a better handle of the error here /!\
 	} else {
@@ -123,24 +129,44 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	xUpLeft := int(g.Player.Position.X + g.Player.EatBox[0][0] + x)
 	yUpLeft := int(g.Player.Position.Y + g.Player.EatBox[0][1] + y)
-	bUpLeft := g.AllBlocks[g.GameMap[xUpLeft][yUpLeft]]
+	var bUpLeft Block
+	if g.outOfMap([]int{xUpLeft}, []int{yUpLeft}) {
+		bUpLeft = g.AllBlocks[' ']
+	} else {
+		bUpLeft = g.AllBlocks[g.GameMap[xUpLeft][yUpLeft]]
+	}
 
 	xUpRight := int(g.Player.Position.X + g.Player.EatBox[1][0] + x)
 	yUpRight := int(g.Player.Position.Y + g.Player.EatBox[1][1] + y)
-	bUpRight := g.AllBlocks[g.GameMap[xUpRight][yUpRight]]
+	var bUpRight Block
+	if g.outOfMap([]int{xUpRight}, []int{yUpRight}) {
+		bUpRight = g.AllBlocks[' ']
+	} else {
+		bUpRight = g.AllBlocks[g.GameMap[xUpRight][yUpRight]]
+	}
 
 	xDownRight := int(g.Player.Position.X + g.Player.EatBox[2][0] + x)
 	yDownRight := int(g.Player.Position.Y + g.Player.EatBox[2][1] + y)
-	bDownRight := g.AllBlocks[g.GameMap[xDownRight][yDownRight]]
+	var bDownRight Block
+	if g.outOfMap([]int{xDownRight}, []int{yDownRight}) {
+		bDownRight = g.AllBlocks[' ']
+	} else {
+		bDownRight = g.AllBlocks[g.GameMap[xDownRight][yDownRight]]
+	}
 
 	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0] + x)
 	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1] + y)
-	bDownLeft := g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
+	var bDownLeft Block
+	if g.outOfMap([]int{xDownLeft}, []int{yDownLeft}) {
+		bDownLeft = g.AllBlocks[' ']
+	} else {
+		bDownLeft = g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
+	}
 
 	g.Collect()
 
 	if x > 0 {
-		if xUpLeft < g.width-1 && xDownLeft < g.width-1 {
+		if xUpLeft < g.width && xDownLeft < g.width {
 			if !bUpRight.Solid &&
 				!bDownRight.Solid {
 				g.Player.Move(x, 0.0)
@@ -150,7 +176,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 			}
 		}
 	} else if x < 0 {
-		if xUpRight > 0 && xDownRight > 0 {
+		if xUpRight >= 0 && xDownRight >= 0 {
 			if !bUpLeft.Solid &&
 				!bDownLeft.Solid {
 				g.Player.Move(x, 0.0)
@@ -162,7 +188,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 	}
 
 	if y > 0 {
-		if yUpLeft < g.height-1 && yUpRight < g.height-1 {
+		if yUpLeft < g.height && yUpRight < g.height {
 			if !bDownRight.Solid &&
 				!bDownLeft.Solid {
 				g.Player.Move(0.0, y)
@@ -174,7 +200,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 			}
 		}
 	} else if y < 0 {
-		if yDownRight > 0 && yDownLeft > 0 {
+		if yDownRight >= 0 && yDownLeft >= 0 {
 			if !bUpLeft.Solid &&
 				!bUpRight.Solid {
 				g.Player.Move(0.0, y)
@@ -193,13 +219,36 @@ func (g *Game) Move(x, y float64) (moving bool) {
 func (g *Game) Collect() {
 	x := int(g.Player.Position.X)
 	y := int(g.Player.Position.Y)
-	b := g.AllBlocks[g.GameMap[x][y]]
-	if b.Collectable {
-		g.GameMap[x][y] = ' '
-		if b.Short == 'c' {
-			g.Player.CollectGold(1)
+	if !g.outOfMap([]int{x}, []int{y}) {
+		b := g.AllBlocks[g.GameMap[x][y]]
+		if b.Collectable {
+			g.GameMap[x][y] = ' '
+			if b.Short == 'c' {
+				g.Player.CollectGold(1)
+			}
 		}
 	}
+}
+
+// Checks if coordinates are inside the map to not get an error
+func (g *Game) outOfMap(x []int, y []int) bool {
+	for _, v := range x {
+		if v < 0 {
+			return true
+		}
+		if v >= g.width {
+			return true
+		}
+	}
+	for _, v := range y {
+		if v < 0 {
+			return true
+		}
+		if v >= g.height {
+			return true
+		}
+	}
+	return false
 }
 
 /////////////////////

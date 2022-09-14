@@ -22,8 +22,6 @@ type Controller struct {
 }
 
 var backgroundImage *ebiten.Image
-var background1Image *ebiten.Image
-var background2Image *ebiten.Image
 var background3Image *ebiten.Image
 var resourcesImage *ebiten.Image
 var iconImage *ebiten.Image
@@ -42,27 +40,19 @@ func initController() Controller {
 
 func init() {
 	var err error
-	resourcesImage, _, err = ebitenutil.NewImageFromFile("data/resources.png")
+	resourcesImage, _, err = ebitenutil.NewImageFromFile("data/images/resources/resources.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-	backgroundImage, _, err = ebitenutil.NewImageFromFile("data/background.png")
+	backgroundImage, _, err = ebitenutil.NewImageFromFile("data/images/backgrounds/background.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-	background1Image, _, err = ebitenutil.NewImageFromFile("data/background1.png")
+	background3Image, _, err = ebitenutil.NewImageFromFile("data/images/backgrounds/background3.png")
 	if err != nil {
 		log.Fatal(err)
 	}
-	background2Image, _, err = ebitenutil.NewImageFromFile("data/background2.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	background3Image, _, err = ebitenutil.NewImageFromFile("data/background3.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	iconImage, _, err = ebitenutil.NewImageFromFile("data/icon.png")
+	iconImage, _, err = ebitenutil.NewImageFromFile("data/images/icons/icon.png")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,6 +90,7 @@ func (c *Controller) manageTick() {
 func (c *Controller) manageJumpOrFall() {
 	touchingGround := c.game.CheckIfTouchesGround()
 	if !touchingGround {
+		c.game.Player.TouchingGround = false
 		// Forces the player to stop walking while on the air
 		if c.game.Player.Walking {
 			c.game.Player.Walking = false

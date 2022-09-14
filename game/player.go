@@ -17,7 +17,7 @@ type Player struct {
 // Initialize a new player with default settings
 func initPlayer(xPlayerFixed int) Player {
 	return Player{
-		Position{float64(xPlayerFixed), 1.5},
+		Position{float64(xPlayerFixed) + 230, 1.5},
 		[4][2]float64{
 			{-0.3, -0.4},
 			{0.3, -0.4},
