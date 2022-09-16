@@ -13,6 +13,7 @@ import (
 )
 
 const xPlayerFixed int = 10
+const framesTillLongJump int = 6
 
 type Controller struct {
 	game        *game.Game
@@ -96,10 +97,8 @@ func (c *Controller) manageJumpOrFall() {
 		}
 	*/
 	// Move vertically the player depending on its vertical velocity
-	if !c.game.TouchesGround() {
-		c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity))
-		c.game.Player.VerticalVelocity += 1.0
-	}
+	c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity))
+	c.game.Player.VerticalVelocity += 1.0
 }
 
 // Manages input for controlling player
@@ -129,15 +128,20 @@ func (c *Controller) manageButtonClicks() {
 	// Up button clicked
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
 		if c.game.Player.TouchingGround {
+			c.game.Jump = 1
 			c.game.Player.TouchingGround = false
-			c.game.Player.VerticalVelocity = -20.0
+			c.game.Player.VerticalVelocity = -17.0
 			c.game.Move(0.0, -0.01)
+		} else {
+			if c.game.Jump > 0 && c.game.Jump < framesTillLongJump {
+				c.game.Jump++
+			} else if c.game.Jump == framesTillLongJump {
+				c.game.Jump++
+				c.game.Player.VerticalVelocity -= 4
+			}
 		}
-	}
-
-	// Down button clicked
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
-		c.game.GoDown()
+	} else {
+		c.game.Jump = 0
 	}
 }
 

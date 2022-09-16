@@ -1,7 +1,5 @@
 package game
 
-import "math"
-
 const mapPath string = "data/maps/map.txt"
 
 // Describe the image of an block, an entity, an object
@@ -23,7 +21,8 @@ type Game struct {
 	height    int            // Number of blocks (height)
 	AllBlocks map[rune]Block // All blocks
 	GameMap   [][]rune       // Game map
-	Player    Player
+	Player    Player         // Player in the map
+	Jump      int            // Indicator for long press ArrowKeyUp for short and long jumps
 }
 
 // Create all the structures and arrays to initialize the game
@@ -36,6 +35,7 @@ func InitGame(xPlayerFixed int) Game {
 		map[rune]Block{},
 		[][]rune{},
 		initPlayer(xPlayerFixed),
+		0,
 	}
 	game.loadResources()
 	game.createMap()
@@ -62,49 +62,6 @@ func (g Game) GetEatBoxPoints() (xUpLeft, yUpLeft, xUpRight, yUpRight,
 	yDownLeft = int(g.Player.Position.Y + g.Player.EatBox[3][1])
 
 	return
-}
-
-// Check if player is touching ground
-func (g *Game) TouchesGround() bool {
-	_, frac := math.Modf(g.Player.Position.Y)
-	if frac > 0.4999 && frac < 0.5000 {
-		xDownRight := int(g.Player.Position.X)
-		yDownRight := int(g.Player.Position.Y) + 1
-		var bDownRight Block
-		if g.outOfMap([]int{xDownRight}, []int{yDownRight}) {
-			bDownRight = g.AllBlocks[' ']
-		} else {
-			bDownRight = g.AllBlocks[g.GameMap[xDownRight][yDownRight]]
-		}
-
-		xDownLeft := int(g.Player.Position.X)
-		yDownLeft := int(g.Player.Position.Y) + 1
-		var bDownLeft Block
-		if g.outOfMap([]int{xDownLeft}, []int{yDownLeft}) {
-			bDownLeft = g.AllBlocks[' ']
-		} else {
-			bDownLeft = g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
-		}
-
-		// If player fall to the platform, the platform is solid
-		if (bDownLeft.Solidity == Platform && bDownRight.Solidity == NotSolid) ||
-			(bDownLeft.Solidity == NotSolid && bDownRight.Solidity == Platform) ||
-			(bDownLeft.Solidity == Platform && bDownRight.Solidity == Platform) {
-			if bDownLeft.Solidity != Solid {
-				g.Player.VerticalVelocity = 0.0 // Reset the velocity of player
-				g.Player.TouchingGround = true
-				return true
-			}
-		}
-
-		if bDownLeft.Solidity == Solid && bDownRight.Solidity == Solid {
-			g.Player.VerticalVelocity = 0.0 // Reset the velocity of player
-			g.Player.TouchingGround = true
-			return true
-		}
-	}
-	g.Player.TouchingGround = false
-	return false
 }
 
 // Moves the player (checking if space is available)
@@ -152,8 +109,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	if x > 0 {
 		if xUpLeft < g.width && xDownLeft < g.width {
-			if (bUpRight.Solidity == NotSolid || bUpRight.Solidity == Platform) &&
-				(bDownRight.Solidity == NotSolid || bDownRight.Solidity == Platform) {
+			if bUpRight.Solidity == NotSolid && bDownRight.Solidity == NotSolid {
 				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
@@ -162,8 +118,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if x < 0 {
 		if xUpRight >= 0 && xDownRight >= 0 {
-			if (bUpLeft.Solidity == NotSolid || bUpLeft.Solidity == Platform) &&
-				(bDownLeft.Solidity == NotSolid || bDownLeft.Solidity == Platform) {
+			if bUpLeft.Solidity == NotSolid && bDownLeft.Solidity == NotSolid {
 				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
@@ -174,8 +129,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	if y > 0 {
 		if yUpLeft < g.height && yUpRight < g.height {
-			if (bDownLeft.Solidity == NotSolid || bDownLeft.Solidity == Platform) &&
-				(bDownRight.Solidity == NotSolid || bDownRight.Solidity == Platform) {
+			if bDownLeft.Solidity == NotSolid && bDownRight.Solidity == NotSolid {
 				g.Player.Move(0.0, y)
 				moving = true
 			} else {
@@ -186,8 +140,7 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if y < 0 {
 		if yDownRight >= 0 && yDownLeft >= 0 {
-			if (bUpLeft.Solidity == NotSolid || bUpLeft.Solidity == Platform) &&
-				(bUpRight.Solidity == NotSolid || bUpRight.Solidity == Platform) {
+			if bUpLeft.Solidity == NotSolid && bUpRight.Solidity == NotSolid {
 				g.Player.Move(0.0, y)
 				moving = true
 			} else {
@@ -242,18 +195,6 @@ func (g *Game) Action() {
 		if b.Short == 'C' && g.Player.Keys > 0 {
 			g.GameMap[x+1][y] = 'O'
 			g.Player.Keys--
-		}
-	}
-}
-
-// When down key is pressed, check if block underneath is a platform
-func (g *Game) GoDown() {
-	x := int(g.Player.Position.X)
-	y := int(g.Player.Position.Y) + 1
-	if !g.outOfMap([]int{x}, []int{y}) {
-		if g.AllBlocks[g.GameMap[x][y]].Solidity == Platform {
-			g.Player.Move(0, 0.1)
-			g.Player.TouchingGround = false
 		}
 	}
 }
