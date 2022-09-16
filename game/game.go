@@ -1,10 +1,6 @@
 package game
 
-import (
-	"io/ioutil"
-	"log"
-	"strings"
-)
+import "math"
 
 const mapPath string = "data/maps/map.txt"
 
@@ -30,7 +26,7 @@ type Game struct {
 	Player    Player
 }
 
-// Create all the structs and arrays to initialize the game
+// Create all the structures and arrays to initialize the game
 func InitGame(xPlayerFixed int) Game {
 	// Init game structure
 	game := Game{
@@ -50,62 +46,6 @@ func InitGame(xPlayerFixed int) Game {
 // GAME METHODS ///
 ///////////////////
 
-// Checks if player is touching the ground (not falling or jumping)
-func (g Game) CheckIfTouchesGround() bool {
-	xDownRight := int(g.Player.Position.X + g.Player.EatBox[2][0])
-	yDownRight := int(g.Player.Position.Y + g.Player.EatBox[2][1])
-
-	xDownLeft := int(g.Player.Position.X + g.Player.EatBox[3][0])
-	yDownLeft := int(g.Player.Position.Y + g.Player.EatBox[3][1])
-
-	if g.outOfMap([]int{xDownLeft, xDownRight}, []int{yDownLeft, yDownRight}) {
-		return false
-	}
-
-	if yDownLeft < g.height-1 && yDownRight < g.height-1 {
-		if g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]].Solid ||
-			g.AllBlocks[g.GameMap[xDownRight][yDownRight]].Solid {
-			g.Player.TouchingGround = true
-			return true
-		} else {
-			g.Player.TouchingGround = false
-		}
-	}
-	return false
-}
-
-func (game *Game) createMap() {
-	// Reads the resources file
-	file, err := ioutil.ReadFile(mapPath)
-	if err != nil {
-		log.Fatal(err) // /!\ Need a better handle of the error here /!\
-	} else {
-		// Takes all lines as a slice of strings
-		lines := strings.Split(string(file), "\n")
-
-		// Get the size of the map
-		game.height = len(lines)
-		game.width = longestStr(lines)
-
-		// Generate empty map
-		for w := 0; w < game.width; w++ {
-			game.GameMap = append(game.GameMap, []rune{})
-			for h := 0; h < game.height; h++ {
-				game.GameMap[w] = append(game.GameMap[w], ' ')
-			}
-		}
-
-		// Fill the map
-		for x, l := range lines {
-			for y, c := range l {
-				if c != ' ' {
-					game.GameMap[y][x] = c
-				}
-			}
-		}
-	}
-}
-
 // Returns coordinates of each 4 points of player's eat-box
 func (g Game) GetEatBoxPoints() (xUpLeft, yUpLeft, xUpRight, yUpRight,
 	xDownRight, yDownRight, xDownLeft, yDownLeft int) {
@@ -122,6 +62,49 @@ func (g Game) GetEatBoxPoints() (xUpLeft, yUpLeft, xUpRight, yUpRight,
 	yDownLeft = int(g.Player.Position.Y + g.Player.EatBox[3][1])
 
 	return
+}
+
+// Check if player is touching ground
+func (g *Game) TouchesGround() bool {
+	_, frac := math.Modf(g.Player.Position.Y)
+	if frac > 0.4999 && frac < 0.5000 {
+		xDownRight := int(g.Player.Position.X)
+		yDownRight := int(g.Player.Position.Y) + 1
+		var bDownRight Block
+		if g.outOfMap([]int{xDownRight}, []int{yDownRight}) {
+			bDownRight = g.AllBlocks[' ']
+		} else {
+			bDownRight = g.AllBlocks[g.GameMap[xDownRight][yDownRight]]
+		}
+
+		xDownLeft := int(g.Player.Position.X)
+		yDownLeft := int(g.Player.Position.Y) + 1
+		var bDownLeft Block
+		if g.outOfMap([]int{xDownLeft}, []int{yDownLeft}) {
+			bDownLeft = g.AllBlocks[' ']
+		} else {
+			bDownLeft = g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
+		}
+
+		// If player fall to the platform, the platform is solid
+		if (bDownLeft.Solidity == Platform && bDownRight.Solidity == NotSolid) ||
+			(bDownLeft.Solidity == NotSolid && bDownRight.Solidity == Platform) ||
+			(bDownLeft.Solidity == Platform && bDownRight.Solidity == Platform) {
+			if bDownLeft.Solidity != Solid {
+				g.Player.VerticalVelocity = 0.0 // Reset the velocity of player
+				g.Player.TouchingGround = true
+				return true
+			}
+		}
+
+		if bDownLeft.Solidity == Solid && bDownRight.Solidity == Solid {
+			g.Player.VerticalVelocity = 0.0 // Reset the velocity of player
+			g.Player.TouchingGround = true
+			return true
+		}
+	}
+	g.Player.TouchingGround = false
+	return false
 }
 
 // Moves the player (checking if space is available)
@@ -163,12 +146,14 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		bDownLeft = g.AllBlocks[g.GameMap[xDownLeft][yDownLeft]]
 	}
 
-	g.Collect()
+	g.Collect() // Collect items if player is on collectable item
+
+	g.Action() // Do action (like open a door with a key)
 
 	if x > 0 {
 		if xUpLeft < g.width && xDownLeft < g.width {
-			if !bUpRight.Solid &&
-				!bDownRight.Solid {
+			if (bUpRight.Solidity == NotSolid || bUpRight.Solidity == Platform) &&
+				(bDownRight.Solidity == NotSolid || bDownRight.Solidity == Platform) {
 				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
@@ -177,8 +162,8 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if x < 0 {
 		if xUpRight >= 0 && xDownRight >= 0 {
-			if !bUpLeft.Solid &&
-				!bDownLeft.Solid {
+			if (bUpLeft.Solidity == NotSolid || bUpLeft.Solidity == Platform) &&
+				(bDownLeft.Solidity == NotSolid || bDownLeft.Solidity == Platform) {
 				g.Player.Move(x, 0.0)
 				if g.Player.TouchingGround {
 					moving = true
@@ -189,8 +174,8 @@ func (g *Game) Move(x, y float64) (moving bool) {
 
 	if y > 0 {
 		if yUpLeft < g.height && yUpRight < g.height {
-			if !bDownRight.Solid &&
-				!bDownLeft.Solid {
+			if (bDownLeft.Solidity == NotSolid || bDownLeft.Solidity == Platform) &&
+				(bDownRight.Solidity == NotSolid || bDownRight.Solidity == Platform) {
 				g.Player.Move(0.0, y)
 				moving = true
 			} else {
@@ -201,8 +186,8 @@ func (g *Game) Move(x, y float64) (moving bool) {
 		}
 	} else if y < 0 {
 		if yDownRight >= 0 && yDownLeft >= 0 {
-			if !bUpLeft.Solid &&
-				!bUpRight.Solid {
+			if (bUpLeft.Solidity == NotSolid || bUpLeft.Solidity == Platform) &&
+				(bUpRight.Solidity == NotSolid || bUpRight.Solidity == Platform) {
 				g.Player.Move(0.0, y)
 				moving = true
 			} else {
@@ -227,13 +212,53 @@ func (g *Game) Collect() {
 			case 'c':
 				g.Player.CollectGold(1)
 			case 'k':
-				g.Player.AddInventory('k')
+				g.Player.Keys++
 			}
 		}
 	}
 }
 
-// Checks if coordinates are inside the map to not get an error
+// Checks if player is over an element that has an action and does it
+func (g *Game) Action() {
+	x := int(g.Player.Position.X)
+	y := int(g.Player.Position.Y)
+
+	// Block directly at the left of player
+	if !g.outOfMap([]int{x - 1}, []int{y}) {
+		b := g.AllBlocks[g.GameMap[x-1][y]]
+
+		// If blocks is a closed door
+		if b.Short == 'C' && g.Player.Keys > 0 {
+			g.GameMap[x-1][y] = 'O'
+			g.Player.Keys--
+		}
+	}
+
+	// Block directly at the right of player
+	if !g.outOfMap([]int{x + 1}, []int{y}) {
+		b := g.AllBlocks[g.GameMap[x+1][y]]
+
+		// If blocks is a closed door
+		if b.Short == 'C' && g.Player.Keys > 0 {
+			g.GameMap[x+1][y] = 'O'
+			g.Player.Keys--
+		}
+	}
+}
+
+// When down key is pressed, check if block underneath is a platform
+func (g *Game) GoDown() {
+	x := int(g.Player.Position.X)
+	y := int(g.Player.Position.Y) + 1
+	if !g.outOfMap([]int{x}, []int{y}) {
+		if g.AllBlocks[g.GameMap[x][y]].Solidity == Platform {
+			g.Player.Move(0, 0.1)
+			g.Player.TouchingGround = false
+		}
+	}
+}
+
+// Checks if coordinates are inside the map to not get an error out of bounds
 func (g *Game) outOfMap(x []int, y []int) bool {
 	for _, v := range x {
 		if v < 0 {

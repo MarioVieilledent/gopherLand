@@ -88,19 +88,17 @@ func (c *Controller) manageTick() {
 
 // Manages jump and fall of player
 func (c *Controller) manageJumpOrFall() {
-	touchingGround := c.game.CheckIfTouchesGround()
-	if !touchingGround {
-		c.game.Player.TouchingGround = false
-		// Forces the player to stop walking while on the air
+	// c.game.Player.TouchingGround = false
+	// Forces the player to stop walking while on the air
+	/*
 		if c.game.Player.Walking {
 			c.game.Player.Walking = false
 		}
-		// Move vertically the player depending on its vertical velocity
+	*/
+	// Move vertically the player depending on its vertical velocity
+	if !c.game.TouchesGround() {
 		c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity))
 		c.game.Player.VerticalVelocity += 1.0
-		// If player hit ceil while jumping
-	} else if c.game.Player.VerticalVelocity != 0 {
-		c.game.Player.VerticalVelocity = 0
 	}
 }
 
@@ -108,6 +106,7 @@ func (c *Controller) manageJumpOrFall() {
 func (c *Controller) manageButtonClicks() {
 	var notClickedLeft, notClickedRight bool
 
+	// Left button clicked
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 		c.game.Player.Direction = 'l'
 		c.game.Player.Walking = c.game.Move(-c.game.Player.Speed, 0)
@@ -134,6 +133,11 @@ func (c *Controller) manageButtonClicks() {
 			c.game.Player.VerticalVelocity = -20.0
 			c.game.Move(0.0, -0.01)
 		}
+	}
+
+	// Down button clicked
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
+		c.game.GoDown()
 	}
 }
 
@@ -209,10 +213,17 @@ func (c *Controller) displayPlayer(screen *ebiten.Image) {
 				c.game.AllBlocks['p'].Images[1].Y2)).(*ebiten.Image), op)
 	}
 
-	// Display number of golds
+	// Config textRenderer
 	c.txtRenderer.SetTarget(screen)
-	c.txtRenderer.SetColor(color.RGBA{200, 150, 10, 255})
-	c.txtRenderer.Draw(strconv.Itoa(c.game.Player.Gold), 10, 0)
+	c.txtRenderer.SetSizePx(42)
+
+	// Display number of golds
+	c.txtRenderer.SetColor(color.RGBA{188, 94, 16, 255})
+	c.txtRenderer.Draw("Golds: "+strconv.Itoa(c.game.Player.Gold), 20, 10)
+
+	// Display number of golds
+	c.txtRenderer.SetColor(color.RGBA{147, 31, 124, 255})
+	c.txtRenderer.Draw("Keys: "+strconv.Itoa(c.game.Player.Keys), 20, 40)
 }
 
 /////////////////////

@@ -11,13 +11,14 @@ type Player struct {
 	Walking          bool    // Animate player when walking
 
 	Gold      int      // Gold earned
+	Keys      int      // Number of keys owned
 	Inventory []Object // List of object
 }
 
 // Initialize a new player with default settings
 func initPlayer(xPlayerFixed int) Player {
 	return Player{
-		Position{float64(xPlayerFixed) + 0.0, 1.5},
+		Position{float64(xPlayerFixed) + 6.5, 2},
 		[4][2]float64{
 			{-0.3, -0.4},
 			{0.3, -0.4},
@@ -31,6 +32,7 @@ func initPlayer(xPlayerFixed int) Player {
 		0.0,
 		false,
 
+		0,
 		0,
 		[]Object{},
 	}
