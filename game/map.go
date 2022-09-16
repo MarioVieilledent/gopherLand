@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const mapPath string = "data/maps/map.txt"
+
 // Creates the map (array of array of runes) based on the txt map file
 func (game *Game) createMap() {
 	// Reads the resources file

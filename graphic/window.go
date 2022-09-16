@@ -12,6 +12,12 @@ import (
 	"github.com/tinne26/etxt"
 )
 
+const windowWidth int = 1280
+const windowHeight int = 720
+
+var blockDisplayedWidth int
+var blockDisplayedHeight int
+
 const xPlayerFixed int = 10
 const framesTillLongJump int = 6
 
@@ -35,7 +41,9 @@ var playerShift float64 // Shift for displaying player
 
 func initController() Controller {
 	g := game.InitGame(xPlayerFixed)
-	playerShift = 0.5 * float64(g.Ss)
+	playerShift = 0.5 * float64(g.BlockSize)
+	blockDisplayedWidth = windowWidth/g.BlockSize - 5
+	blockDisplayedWidth = blockDisplayedHeight/g.BlockSize - 3
 	return Controller{&g, 0, 0, getTxtRenderer()}
 }
 
@@ -130,14 +138,14 @@ func (c *Controller) manageButtonClicks() {
 		if c.game.Player.TouchingGround {
 			c.game.Jump = 1
 			c.game.Player.TouchingGround = false
-			c.game.Player.VerticalVelocity = -17.0
+			c.game.Player.VerticalVelocity = c.game.Player.VelocityShortJump
 			c.game.Move(0.0, -0.01)
 		} else {
 			if c.game.Jump > 0 && c.game.Jump < framesTillLongJump {
 				c.game.Jump++
 			} else if c.game.Jump == framesTillLongJump {
 				c.game.Jump++
-				c.game.Player.VerticalVelocity -= 4
+				c.game.Player.VerticalVelocity += c.game.Player.VelocityDiffLongJump
 			}
 		}
 	} else {
@@ -162,13 +170,22 @@ func (c *Controller) displayBackgrounds(screen *ebiten.Image) {
 
 	// Moving background image
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(-c.game.Player.Position.X*0.6*float64(c.game.Ss), 0)
+	op.GeoM.Translate(-c.game.Player.Position.X*0.6*float64(c.game.BlockSize), 0)
 	screen.DrawImage(background3Image, op)
 }
 
 // Draw all blocks of the map
 func (c *Controller) displayBlocks(screen *ebiten.Image) {
-	for x := 0; x < len(c.game.GameMap); x++ {
+
+	xFrom := int(c.game.Player.Position.X) - xPlayerFixed
+	if xFrom < 0 {
+		xFrom = 0
+	}
+	xTo := int(c.game.Player.Position.X) + xPlayerFixed
+	if xTo >= len(c.game.GameMap) {
+		xTo = len(c.game.GameMap) - 1
+	}
+	for x := xFrom; x <= xTo; x++ {
 		for y := 0; y < len(c.game.GameMap[x]); y++ {
 
 			block := c.game.AllBlocks[c.game.GameMap[x][y]]
@@ -177,10 +194,10 @@ func (c *Controller) displayBlocks(screen *ebiten.Image) {
 
 			if len(block.Images) > 0 {
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(c.game.Ss*x)-
-					c.game.Player.Position.X*float64(c.game.Ss)+
-					float64(xPlayerFixed*c.game.Ss),
-					float64(c.game.Ss*y))
+				op.GeoM.Translate(float64(c.game.BlockSize*x)-
+					c.game.Player.Position.X*float64(c.game.BlockSize)+
+					float64(xPlayerFixed*c.game.BlockSize),
+					float64(c.game.BlockSize*y))
 				screen.DrawImage(resourcesImage.SubImage(
 					image.Rect(block.Images[modulo].X1, block.Images[modulo].Y1,
 						block.Images[modulo].X2, block.Images[modulo].Y2)).(*ebiten.Image), op)
@@ -197,12 +214,12 @@ func (c *Controller) displayPlayer(screen *ebiten.Image) {
 	if c.game.Player.Direction == 'l' {
 		// Mirroring image
 		op.GeoM.Scale(-1, 1)
-		op.GeoM.Translate(float64(c.game.Ss)-playerShift, -playerShift)
+		op.GeoM.Translate(float64(c.game.BlockSize)-playerShift, -playerShift)
 	} else {
 		op.GeoM.Translate(-playerShift, -playerShift)
 	}
-	op.GeoM.Translate(float64(xPlayerFixed*c.game.Ss),
-		c.game.Player.Position.Y*float64(c.game.Ss))
+	op.GeoM.Translate(float64(xPlayerFixed*c.game.BlockSize),
+		c.game.Player.Position.Y*float64(c.game.BlockSize))
 	if c.game.Player.Walking {
 		screen.DrawImage(resourcesImage.SubImage(
 			image.Rect(c.game.AllBlocks['p'].Images[modulo].X1,
@@ -245,11 +262,11 @@ func (c Controller) getModulo(block game.Block) int {
 }
 
 func (c *Controller) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 1280, 720
+	return windowWidth, windowHeight
 }
 
 func OpenWindow() {
-	ebiten.SetWindowSize(1280, 720)
+	ebiten.SetWindowSize(windowWidth, windowHeight)
 	ebiten.SetWindowTitle("GopherLand")
 	ebiten.SetWindowIcon([]image.Image{iconImage})
 

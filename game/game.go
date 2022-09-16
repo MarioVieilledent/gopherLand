@@ -1,7 +1,5 @@
 package game
 
-const mapPath string = "data/maps/map.txt"
-
 // Describe the image of an block, an entity, an object
 type ImagePosition struct {
 	X1 int
@@ -16,7 +14,7 @@ type Position struct {
 }
 
 type Game struct {
-	Ss        int            // Square size of blocks
+	BlockSize int            // Square size of blocks
 	width     int            // Number of blocks (width)
 	height    int            // Number of blocks (height)
 	AllBlocks map[rune]Block // All blocks

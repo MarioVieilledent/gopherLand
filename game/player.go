@@ -1,15 +1,22 @@
 package game
 
 type Player struct {
+	// Position and eat-box
 	Position Position
 	EatBox   [4][2]float64 // 4 points in rectangle around player
 
-	Speed            float64
+	// Speed and velocities for moving
+	Speed                float64 // Speed when walking
+	VelocityShortJump    float64 // Vertical velocity hen short jump
+	VelocityDiffLongJump float64 // Add of vertical velocity for long jump
+
+	// State
 	Direction        rune    // l or r
 	TouchingGround   bool    // True if player is walking, false if falling or jumping
 	VerticalVelocity float64 // Vertical velocity on air (gravity falling, or gravity jumping)
 	Walking          bool    // Animate player when walking
 
+	// Stuff
 	Gold      int      // Gold earned
 	Keys      int      // Number of keys owned
 	Inventory []Object // List of object
@@ -27,6 +34,9 @@ func initPlayer(xPlayerFixed int) Player {
 		},
 
 		0.09,
+		-17.0,
+		-4.0,
+
 		'r',
 		false,
 		0.0,

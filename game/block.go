@@ -62,10 +62,10 @@ func (game *Game) loadRessource(name string, short rune, solid Solidity, collect
 
 	for _, v := range images {
 		imagePos = append(imagePos, ImagePosition{
-			game.Ss * v.X1,
-			game.Ss * v.X2,
-			game.Ss * v.Y1,
-			game.Ss * v.Y2,
+			game.BlockSize * v.X1,
+			game.BlockSize * v.X2,
+			game.BlockSize * v.Y1,
+			game.BlockSize * v.Y2,
 		})
 	}
 
