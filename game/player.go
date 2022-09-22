@@ -35,7 +35,7 @@ func initPlayer(xPlayerFixed int) Player {
 
 		0.09,
 		-17.0,
-		-4.0,
+		-5.9,
 
 		'r',
 		false,

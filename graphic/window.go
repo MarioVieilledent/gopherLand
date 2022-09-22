@@ -15,11 +15,14 @@ import (
 const windowWidth int = 1280
 const windowHeight int = 720
 
-var blockDisplayedWidth int
-var blockDisplayedHeight int
+// var blockDisplayedWidth int
+// var blockDisplayedHeight int
 
-const xPlayerFixed int = 10
-const framesTillLongJump int = 6
+const xPlayerFixed int = 10           // Block shift where the player is
+const framesTillLongJump int = 8      // Frames until long press turns into long jump
+const framesTillCantJumpInAir int = 6 // Frames player can still jump after falling
+
+var framesInAir int = 0 // Counter of frame where player is falling
 
 type Controller struct {
 	game        *game.Game
@@ -42,8 +45,8 @@ var playerShift float64 // Shift for displaying player
 func initController() Controller {
 	g := game.InitGame(xPlayerFixed)
 	playerShift = 0.5 * float64(g.BlockSize)
-	blockDisplayedWidth = windowWidth/g.BlockSize - 5
-	blockDisplayedWidth = blockDisplayedHeight/g.BlockSize - 3
+	// blockDisplayedWidth = windowWidth/g.BlockSize - 5
+	// blockDisplayedWidth = blockDisplayedHeight/g.BlockSize - 3
 	return Controller{&g, 0, 0, getTxtRenderer()}
 }
 
@@ -105,8 +108,15 @@ func (c *Controller) manageJumpOrFall() {
 		}
 	*/
 	// Move vertically the player depending on its vertical velocity
-	c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity))
 	c.game.Player.VerticalVelocity += 1.0
+	if c.game.Move(0.0, (0.01 * c.game.Player.VerticalVelocity)) {
+		if framesInAir == framesTillCantJumpInAir {
+			framesInAir = 0
+			c.game.Player.TouchingGround = false
+		} else {
+			framesInAir++
+		}
+	}
 }
 
 // Manages input for controlling player
